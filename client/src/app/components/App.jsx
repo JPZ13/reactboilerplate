@@ -6,6 +6,6 @@ export default class App extends Component {
   }
 
   render() {
-    return <p>Hello World</p>
+    return <p>Hello Test</p>
   }
 }
