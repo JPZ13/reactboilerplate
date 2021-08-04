@@ -1,52 +1,93 @@
-const webpack = require('webpack');
-const path = require('path');
-const loader = require('babel-loader');
+const webpack = require('webpack')
+const HtmlWebPackPlugin = require('html-webpack-plugin')
+const path = require('path')
 
-const BUILD_DIR = path.resolve(__dirname, 'client/src/public');
-const APP_DIR = path.resolve(__dirname, 'client/src');
+const nodeEnv = process.env.NODE_ENV
+const isProd = nodeEnv === 'production'
+const isDeployed = isProd || nodeEnv === 'staging'
 
-const getPlugins = function() {
-  let plugins = [];
-
-  // do this push stuff in case we have to 
-  // configure more plugins for production or
-  // development
-  plugins.push( new webpack.DefinePlugin({
-    'process.env': { NODE_ENV: JSON.stringify(process.env.NODE_ENV || 'development') }
-  }));
-  return plugins;
-};
+const webpackMode = isDeployed ? 'production' : 'development'
 
 const config = {
-  entry: APP_DIR + '/index.jsx',
-  devtool: 'source-map',
+  mode: webpackMode,
+  entry: [
+    './src/index.jsx',
+  ],
   output: {
-    path: BUILD_DIR,
-    filename: 'bundle.js'
+    path: path.resolve(__dirname, './dist'),
+    filename: 'index_bundle.js',
+    publicPath: '/',
   },
   resolve: {
-    extensions: ['', '.js', '.jsx']
-  },
-  externals: {
-    'cheerio':
-    'window',
-    'react/lib/ExecutionEnvironment': true,
-    'react/lib/ReactContext': true,
-  },
-  module: {
-    loaders: [
-      {
-        test: /\.jsx?$/,
-        loader: 'babel-loader',
-        query: {
-          presets: ['es2015', 'react', 'stage-0']
-        },
-        exclude: /node_modules/,
-      }
+    extensions: ['.tsx', '.ts', '.js', '.jsx', '.css'],
+    alias: {
+      components: path.resolve(__dirname, './src/components'),
+      common: path.resolve(__dirname, './src/components/common'),
+      state: path.resolve(__dirname, './src/state'),
+      utils: path.resolve(__dirname, './src/utils'),
+      types: path.resolve(__dirname, './src/types'),
+      assets: path.resolve(__dirname, './assets'),
+    },
+    modules: [
+      path.resolve(__dirname, './src'),
+      'node_modules',
     ],
   },
-  plugins: getPlugins(),
-  watch: true
-};
+  module: {
+    rules: [
+      {
+        test: /\.(js|jsx|ts|tsx)$/,
+        exclude: /node_modules/,
+        use: [
+          'babel-loader',
+        ],
+      },
+      {
+        test: /\.css$/,
+        exclude: /node_modules/,
+        use: [
+          { loader: 'style-loader' },
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1,
+              modules: true,
+            },
+          },
+          { loader: 'postcss-loader' },
+        ],
+      },
+      {
+        test: /\.(png|jp(e*)g|svg)$/,
+        use: [
+          'file-loader',
+        ],
+      },
+      {
+        test: /\.(woff|woff2|eot|ttf|otf)$/,
+        use: [
+          'file-loader',
+        ],
+      },
+      {
+        test: /\.html$/,
+        use: [
+          'html-loader',
+        ],
+      },
+    ],
+  },
+  plugins: [
+    new HtmlWebPackPlugin({
+      template: './assets/index.html',
+      filename: './index.html',
+    }),
+  ],
+}
 
-module.exports = config;
+if (!isDeployed) {
+  config.entry.unshift('webpack-hot-middleware/client')
+  config.plugins.unshift(new webpack.HotModuleReplacementPlugin())
+}
+
+module.exports = config
